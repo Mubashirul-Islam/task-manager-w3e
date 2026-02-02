@@ -1,44 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Manager - Welcome</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="welcome-container">
+      <div class="welcome-content">
+        <h1 class="welcome-title">📝 Task Manager</h1>
+        <p class="welcome-subtitle">
+          Organize your tasks efficiently and stay productive
+        </p>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo App</title>
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
-</head>
-
-<body>
-    <div style="margin-top: 50px;" class="ui container">
-        <h1 class="ui center aligned header">To Do App</h1>
-
-        <form class="ui form" action="/add" method="post">
-            <div class="field">
-                <label>Todo Title</label>
-                <input type="text" name="title" placeholder="Enter Todo..."><br>
-            </div>
-            <button class="ui blue button" type="submit">Add</button>
-        </form>
-
-        <hr>
-
-        {% for todo in todo_list %}
-        <div class="ui segment">
-            <p class="ui big header">{{todo.id }} | {{ todo.title }}</p>
-
-            {% if todo.complete == False %}
-            <span class="ui gray label">Not Complete</span>
-            {% else %}
-            <span class="ui green label">Completed</span>
-            {% endif %}
-
-            <a class="ui blue button" href="/update/{{ todo.id }}">Update</a>
-            <a class="ui red button" href="/delete/{{ todo.id }}">Delete</a>
+        <div class="features">
+          <div class="feature-card">
+            <span class="feature-icon">✅</span>
+            <h3>Create Tasks</h3>
+            <p>Add tasks with titles, descriptions, and due dates</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">📊</span>
+            <h3>Track Progress</h3>
+            <p>Monitor task status from todo to completion</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">🔍</span>
+            <h3>Search & Filter</h3>
+            <p>Find tasks quickly with powerful filters</p>
+          </div>
         </div>
-        {% endfor %}
-    </div>
-</body>
 
+        <div class="cta-buttons">
+          <a href="/tasks" class="btn btn-primary">Get Started</a>
+          <a href="/api/tasks" class="btn btn-secondary">View API</a>
+        </div>
+
+        <div class="info-section">
+          <h2>API Endpoints</h2>
+          <div class="api-list">
+            <div class="api-item">
+              <span class="method get">GET</span>
+              <code>/api/tasks</code>
+              <span class="desc">List all tasks (with filters)</span>
+            </div>
+            <div class="api-item">
+              <span class="method get">GET</span>
+              <code>/api/tasks/&lt;id&gt;</code>
+              <span class="desc">Get single task</span>
+            </div>
+            <div class="api-item">
+              <span class="method post">POST</span>
+              <code>/api/tasks</code>
+              <span class="desc">Create new task</span>
+            </div>
+            <div class="api-item">
+              <span class="method put">PUT</span>
+              <code>/api/tasks/&lt;id&gt;</code>
+              <span class="desc">Update task</span>
+            </div>
+            <div class="api-item">
+              <span class="method delete">DELETE</span>
+              <code>/api/tasks/&lt;id&gt;</code>
+              <span class="desc">Delete task</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>
