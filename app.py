@@ -1,14 +1,19 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+from logger import setup_logger
+
+load_dotenv()
 
 app = Flask(__name__)
 
-# /// = relative path, //// = absolute path
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+setup_logger(app)
 
 class Todo(db.Model):
     __tablename__ = "todos"
@@ -27,7 +32,7 @@ class Todo(db.Model):
     created_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow
+        default=datetime.now
     )
     
     due_date = db.Column(
@@ -56,6 +61,7 @@ def get_tasks():
     - q: search in title/description
     - sort: sort by field (due_date, created_at)
     """
+    app.logger.info(f"GET /api/tasks - Params: {request.args}")
     query = Todo.query
     
     # Filter by status
@@ -63,6 +69,7 @@ def get_tasks():
     if status:
         valid_statuses = ['todo', 'in_progress', 'done']
         if status not in valid_statuses:
+            app.logger.warning(f"Invalid status filter attempted: {status}")
             return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
         query = query.filter(Todo.status == status)
     
@@ -87,6 +94,7 @@ def get_tasks():
         return jsonify({"error": "Invalid sort field. Must be 'due_date' or 'created_at'"}), 400
     
     tasks = query.all()
+    app.logger.info(f"Retrieved {len(tasks)} tasks")
     
     return jsonify([{
         "id": task.id,
@@ -101,9 +109,11 @@ def get_tasks():
 @app.route("/api/tasks/<int:task_id>", methods=["GET"])
 def get_task(task_id):
     """Get a single task by ID"""
+    app.logger.info(f"GET /api/tasks/{task_id}")
     task = Todo.query.get(task_id)
     
     if not task:
+        app.logger.warning(f"Task not found: {task_id}")
         return jsonify({"error": "Task not found"}), 404
     
     return jsonify({
@@ -122,13 +132,16 @@ def create_task():
     Create a new task
     Body: {"title": "...", "description": "...", "due_date": "YYYY-MM-DD"}
     """
+    app.logger.info("POST /api/tasks - Creating new task")
     data = request.get_json()
     
     if not data:
+        app.logger.error("Request body missing or not JSON")
         return jsonify({"error": "Request body must be JSON"}), 400
     
     # Validate title
     if not data.get('title') or not data.get('title').strip():
+        app.logger.warning("Task creation failed: missing title")
         return jsonify({"error": "Title is required"}), 400
     
     # Validate status if provided
@@ -156,6 +169,8 @@ def create_task():
     db.session.add(task)
     db.session.commit()
     
+    app.logger.info(f"Task created successfully: ID={task.id}, Title='{task.title}'")
+    
     return jsonify({
         "id": task.id,
         "title": task.title,
@@ -172,9 +187,11 @@ def update_task(task_id):
     Update an existing task
     Body: {"title": "...", "description": "...", "status": "...", "due_date": "YYYY-MM-DD"}
     """
+    app.logger.info(f"PUT /api/tasks/{task_id} - Updating task")
     task = Todo.query.get(task_id)
     
     if not task:
+        app.logger.warning(f"Task update failed: Task not found {task_id}")
         return jsonify({"error": "Task not found"}), 404
     
     data = request.get_json()
@@ -211,6 +228,8 @@ def update_task(task_id):
     
     db.session.commit()
     
+    app.logger.info(f"Task updated successfully: ID={task.id}, Title='{task.title}'")
+    
     return jsonify({
         "id": task.id,
         "title": task.title,
@@ -224,13 +243,17 @@ def update_task(task_id):
 @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task(task_id):
     """Delete a task by ID"""
+    app.logger.info(f"DELETE /api/tasks/{task_id}")
     task = Todo.query.get(task_id)
     
     if not task:
+        app.logger.warning(f"Task deletion failed: Task not found {task_id}")
         return jsonify({"error": "Task not found"}), 404
     
     db.session.delete(task)
     db.session.commit()
+    
+    app.logger.info(f"Task deleted successfully: ID={task_id}")
     
     return jsonify({"message": "Task deleted successfully"}), 200
 
@@ -238,4 +261,5 @@ def delete_task(task_id):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+        app.logger.info("Database tables created")
+    app.run()

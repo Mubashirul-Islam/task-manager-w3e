@@ -1,26 +1,5 @@
-let currentTaskId = null;
-
 // Load tasks on page load
 document.addEventListener("DOMContentLoaded", loadTasks);
-
-// Modal controls
-const modal = document.getElementById("taskModal");
-const newTaskBtn = document.getElementById("newTaskBtn");
-const closeBtn = document.querySelector(".close");
-const cancelBtn = document.getElementById("cancelBtn");
-
-newTaskBtn.onclick = () => openModal();
-closeBtn.onclick = closeModal;
-cancelBtn.onclick = closeModal;
-window.onclick = (e) => {
-  if (e.target == modal) closeModal();
-};
-
-// Form submit
-document.getElementById("taskForm").onsubmit = (e) => {
-  e.preventDefault();
-  saveTask();
-};
 
 // Filters
 document
@@ -28,30 +7,6 @@ document
   .addEventListener("input", debounce(loadTasks, 500));
 document.getElementById("statusFilter").addEventListener("change", loadTasks);
 document.getElementById("sortSelect").addEventListener("change", loadTasks);
-
-function openModal(task = null) {
-  modal.style.display = "block";
-  document.getElementById("modalTitle").textContent = task
-    ? "Edit Task"
-    : "Create New Task";
-
-  if (task) {
-    currentTaskId = task.id;
-    document.getElementById("taskTitle").value = task.title;
-    document.getElementById("taskDescription").value = task.description || "";
-    document.getElementById("taskStatus").value = task.status;
-    document.getElementById("taskDueDate").value = task.due_date || "";
-  } else {
-    currentTaskId = null;
-    document.getElementById("taskForm").reset();
-  }
-}
-
-function closeModal() {
-  modal.style.display = "none";
-  currentTaskId = null;
-  document.getElementById("taskForm").reset();
-}
 
 async function loadTasks() {
   const search = document.getElementById("searchInput").value;
@@ -78,103 +33,60 @@ function displayTasks(tasks) {
 
   if (tasks.length === 0) {
     tasksList.innerHTML =
-      '<div class="empty-state">No tasks found. Create your first task!</div>';
+      '<div class="empty-state">No tasks to show right now.</div>';
     return;
   }
 
-  tasksList.innerHTML = tasks
-    .map(
-      (task) => `
-          <div class="task-card ${task.status}">
-              <div class="task-content">
-                  <div class="task-header">
-                      <h3 class="task-title">${escapeHtml(task.title)}</h3>
-                      <span class="status-badge ${task.status}">${formatStatus(
-        task.status
-      )}</span>
-                  </div>
-                  
-                  ${
-                    task.description
-                      ? `<p class="task-description">${escapeHtml(
-                          task.description
-                        )}</p>`
-                      : ""
-                  }
-                  
-                  <div class="task-meta">
-                      <span class="meta-item">
-                          📅 Created: ${formatDate(task.created_at)}
-                      </span>
-                      ${
-                        task.due_date
-                          ? `
-                          <span class="meta-item ${
-                            isPastDue(task.due_date, task.status)
-                              ? "overdue"
-                              : ""
-                          }">
-                              ⏰ Due: ${formatDate(task.due_date)}
-                          </span>
-                      `
-                          : ""
-                      }
-                  </div>
-              </div>
-              
-              <div class="task-actions">
-                  <button class="action-btn edit-btn" onclick="editTask(${
-                    task.id
-                  })">✏️ Edit</button>
-                  <button class="action-btn delete-btn" onclick="deleteTask(${
-                    task.id
-                  })">🗑️ Delete</button>
-              </div>
-          </div>
-      `
-    )
-    .join("");
-}
-
-async function saveTask() {
-  const title = document.getElementById("taskTitle").value;
-  const description = document.getElementById("taskDescription").value;
-  const status = document.getElementById("taskStatus").value;
-  const due_date = document.getElementById("taskDueDate").value;
-
-  const taskData = { title, description, status };
-  if (due_date) taskData.due_date = due_date;
-
-  try {
-    const url = currentTaskId ? `/api/tasks/${currentTaskId}` : "/api/tasks";
-    const method = currentTaskId ? "PUT" : "POST";
-
-    const response = await fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(taskData),
-    });
-
-    if (response.ok) {
-      closeModal();
-      loadTasks();
-    } else {
-      const error = await response.json();
-      alert("Error: " + error.error);
-    }
-  } catch (error) {
-    alert("Failed to save task. Please try again.");
-  }
-}
-
-async function editTask(id) {
-  try {
-    const response = await fetch(`/api/tasks/${id}`);
-    const task = await response.json();
-    openModal(task);
-  } catch (error) {
-    alert("Failed to load task. Please try again.");
-  }
+  tasksList.innerHTML = `
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Due Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tasks
+          .map(
+            (task) => `
+          <tr class="task-row ${task.status}">
+            <td class="task-title">${escapeHtml(task.title)}</td>
+            <td class="task-description">${
+              task.description ? escapeHtml(task.description) : ""
+            }</td>
+            <td>
+              <select class="status-select" onchange="updateTaskStatus(${
+                task.id
+              }, this.value)">
+                <option value="todo" ${
+                  task.status === "todo" ? "selected" : ""
+                }>To Do</option>
+                <option value="in_progress" ${
+                  task.status === "in_progress" ? "selected" : ""
+                }>In Progress</option>
+                <option value="done" ${
+                  task.status === "done" ? "selected" : ""
+                }>Done</option>
+              </select>
+            </td>
+            <td>${formatDate(task.created_at)}</td>
+            <td>${formatDate(task.due_date)}</td>
+            <td>
+              <button class="action-btn delete-btn" onclick="deleteTask(${
+                task.id
+              })">Delete</button>
+            </td>
+          </tr>
+        `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
 }
 
 async function deleteTask(id) {
@@ -194,6 +106,28 @@ async function deleteTask(id) {
   }
 }
 
+// Update a task's status via the API and refresh the list
+async function updateTaskStatus(id, status) {
+  try {
+    const response = await fetch(`/api/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update status");
+    }
+
+    loadTasks();
+  } catch (error) {
+    alert("Unable to update task status. Please try again.");
+    loadTasks();
+  }
+}
+
 // Helper functions
 function formatStatus(status) {
   return status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -206,10 +140,6 @@ function formatDate(dateStr) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function isPastDue(dueDate, status) {
-  return status !== "done" && new Date(dueDate) < new Date();
 }
 
 function escapeHtml(text) {
